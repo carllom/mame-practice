@@ -1,13 +1,12 @@
 # Address maps and memory views
 
-Address map entries, handler signatures, run-time mapping (views, banks, shares, `install_*`), device maps and spaces, fast access to other spaces, and the `offs_t` width. mame-review rules that govern it: D-6 (the memory rule), D-1 (finders in maps), C-3 (installs and `configure_entries` in start), C-5 (`mem_mask`), D-2 (`ATTR_COLD` on maps).
+Address map entries, handler signatures, run-time mapping (views, banks, shares, `install_*`), and the `offs_t` width. Device maps, space configs, fast access, `device_rom_interface`, wait states and taps are in [memory-spaces](memory-spaces.md). mame-review rules that govern it: D-6 (the memory rule), D-1 (finders in maps), C-3 (installs and `configure_entries` in start), C-5 (`mem_mask`), D-2 (`ATTR_COLD` on maps).
 
 ## TL;DR
 
 - Write each entry as range, `.mirror()`, `.umask*()` at full width, `.cswidth()`, then the handler; give handlers the narrowest signature and `offs_t` offsets.
 - Switch mappings at run time with `memory_view` (`select()`/`disable()`); use a `memory_bank` (`configure_entries`/`set_entry`) for a plain window onto a region.
-- Install what configuration fixes (RAM size, cartridge present) once in `machine_start`; cache `memory_access<…>::specific`/`cache` in start for hot-path access.
-- Export register blocks as a device map (`void map(address_map &map) ATTR_COLD;`) and install it with `.m(m_dev, FUNC(dev::map))`.
+- Install what configuration fixes (RAM size, cartridge present) once in `machine_start`.
 - Keep addresses in `offs_t`, everything else in fixed-width types, and never pass `offs_t` through C varargs: the 64-bit migration has started.
 
 ## Rules
@@ -49,12 +48,12 @@ void mysys_state::machine_reset() { m_ipl_view.select(0); }
 void mysys_state::ipl_disable_w(u8 data) { m_ipl_view.disable(); }
 ```
 
-A view starts disabled (the map underneath shows through), saves its own state, and `select()` of an unconfigured slot is fatal. Only `.mirror()` may qualify the `.view()` entry; a view is placed once. A view entry also takes `install_*` calls (`m_view[0].install_ram(…)`).
+A view starts disabled (the map underneath shows through), saves its own state, and `select()` of an unconfigured slot is fatal. Only `.mirror()` may qualify the `.view()` entry; a view is placed once. A view entry also takes `install_*` calls (`m_view[0].install_ram(…)`). `m_view.exists()` tells whether the view was placed in a map (`1949b85c815`, 2024-08-14).
 
 **Legacy forms**: `address_map_bank_device` (`bankdev.h`, `ADDRESS_MAP_BANK`, `set_bank()`); several `membank("bankN")` switched together (rewritten in `19e538c2834`); uninstalling and reinstalling handlers to swap an overlay.
 **Since**: `574daf4e49e` (2020-11-12)
 **Evidence**: [T1] `src/emu/emumem_mview.cpp` — `memory_view::select`, `register_state`; [T2] `memory.rst` §3.4, §4.6, §5.10; [T2] mame-review D-6; [T5] 28 new files use views; deviation: 5 still add `address_map_bank_device` (`src/mame/akai/s900.cpp`, `src/mame/misc/wren.cpp`)
-**Key symbols**: `memory_view`, `memory_view_entry`, `select`, `disable`, `install_view`
+**Key symbols**: `memory_view`, `memory_view_entry`, `select`, `disable`, `install_view`, `exists`
 
 ### Banks for windows onto a region
 
@@ -97,26 +96,6 @@ void mysys_state::machine_start()
 **Since**: `memory_share_creator` `b8c338858a1` (2020-11-02); `emu::rw_delegate` `c4a9a22eb19` (2023-04-11)
 **Evidence**: [T1] `src/emu/emumem.h` — `emu::rw_delegate` overload taking a `device_finder`; [T2] `memory.rst` §3.1, §5; [T2] mame-review D-6, C-3, D-1; [T5] 37 new files use `memory_share_creator`; `emu::rw_delegate` (15 files) and explicit `readN_delegate(…)` (11+) are about even
 **Key symbols**: `memory_share_creator`, `required_shared_ptr`, `install_ram`, `install_read_handler`, `rw_delegate`
-
-### Device maps, device spaces and fast access
-
-**Do**
-
-```cpp
-map(0x00c0, 0x00c7).m(m_fdc, FUNC(upd72069_device::map));     // host installs the device's register map
-address_space_config m_ram_config;            // m_ram_config("ram", ENDIANNESS_LITTLE, 16, 24, -1)
-memory_access<24, 1, -1, ENDIANNESS_LITTLE>::specific m_ram;   // addr bits, log2 bytes, shift, endian
-device_memory_interface::space_config_vector l6009_device::memory_space_config() const
-{ return space_config_vector { std::make_pair(AS_ROM, &m_rom_config), std::make_pair(AS_RAM, &m_ram_config) }; }
-void l6009_device::device_start() { space(AS_RAM).specific(m_ram); space(AS_ROM).cache(m_rom); }
-```
-
-From `src/devices/sound/l6009.cpp`. `specific()`/`cache()` check the parameters against the space config at start. The host attaches a map with `set_addrmap(AS_…, &host::map)`; `has_configured_map()` tests an optional space.
-
-**Legacy forms**: each host listing a device's registers one by one; `DEVICE_ADDRESS_MAP_START`; `memory_space_config(address_spacenum spacenum)` returning one config per call (before 2017); `space(AS_PROGRAM).read_word(…)` in a hot path (D-6); pointer-returning `space.cache<0, 0, ENDIANNESS_LITTLE>()` before `22513fb6fe2` (2020-05-25).
-**Since**: `memory_access` `22513fb6fe2` (2020-05-25); `space_config_vector` `536b2153d99` (2017-07-10)
-**Evidence**: [T1] `src/emu/dimemory.h` — `space_config_vector`, `has_configured_map`; [T1] `src/emu/emumem.h` — `struct memory_access`, `check_parameters`; [T2] `device_memory_interface.rst`; `memory.rst` §4.3.9; [T2] mame-review D-6, D-2; [T5] 17 new files use `memory_access`
-**Key symbols**: `memory_space_config`, `space_config_vector`, `address_space_config`, `set_addrmap`, `memory_access`, `specific`, `cache`
 
 ### `offs_t` width
 

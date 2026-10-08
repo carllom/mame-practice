@@ -79,6 +79,24 @@ LOGMASKED(LOG_DATA, "%s: rx %02x\n", device().machine().describe_context(), data
 **Evidence**: [T1] `src/emu/logmacro.h` — `emu::detail::dispatch_logerror`; [T3] commit `4f44364b25e` "LOG: automatically dispatch to logerror() or device().logerror()"
 **Key symbols**: `dispatch_logerror`
 
+### Packet and buffer dumps
+
+**Do**
+
+```cpp
+#define LOG_PACKETS (1U << 3)
+// in a device_network_interface device
+if (VERBOSE & LOG_PACKETS)
+	log_bytes(buf, length);
+```
+
+`log_bytes` writes through `device().logerror`, eight bytes per line. The `VERBOSE & mask` test is how a helper that isn't `LOG` joins a channel — distinct from the bare `if (VERBOSE)` around `LOG`/`logerror` that L-1 flags; all four migrated devices use it.
+
+**Legacy forms**: a private `dump_bytes(u8 *buf, int length)` hex dumper per device (still in `scsihle.cpp`).
+**Since**: `f7731929a75` (2025-09-12, Patrick Mackinlay; four NICs migrated)
+**Evidence**: [T1] `src/emu/dinetwork.h` `log_bytes(const u8 *buf, int len)`; [T3] `f7731929a75`; [T2] mame-review L-1 (logging generally; this helper not covered)
+**Key symbols**: `log_bytes`, `device_network_interface`
+
 ## Superseded
 
 None yet.

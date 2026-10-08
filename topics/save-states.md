@@ -53,7 +53,7 @@ ALLOW_SAVE_TYPE(mydev_device::phase);
 
 `ALLOW_SAVE_TYPE` specialises `save_manager::is_atom`, so it sits at namespace scope; it works for a private enum. Without it `save_item(NAME(m_phase))` fails the constraint at compile time.
 
-**Legacy forms**: `int m_state` holding enum values; `typedef enum { ... } state_t;` (no fixed underlying type); `ALLOW_SAVE_TYPE_AND_ARRAY` (renamed `ALLOW_SAVE_TYPE_AND_VECTOR` in `9b582574922`). Both `ALLOW_SAVE_TYPE(x);` and `ALLOW_SAVE_TYPE(x)` compile; on master the first is more common, 92:24.
+**Legacy forms**: `int m_state` holding enum values; `typedef enum { ... } state_t;` (no fixed underlying type); `ALLOW_SAVE_TYPE_AND_ARRAY` (renamed `ALLOW_SAVE_TYPE_AND_VECTOR` in `9b582574922`). Both `ALLOW_SAVE_TYPE(x);` and `ALLOW_SAVE_TYPE(x)` compile; on master the first is more common, 92:24. `save_item(NAME(m_endianness))` on an `endianness_t` no longer compiles since it became `std::endian` (`afd3f3da405`, 2026-05-31, AJR) — it is configuration; save a derived `u8`/`bool` if it truly changes at run time.
 **Since**: established (`ALLOW_SAVE_TYPE` predates `543fa08fd0f`, 2011)
 **Evidence**: [T1] `src/emu/save.h` — `ALLOW_SAVE_TYPE` doc: "specific enum types that have fixed width integer types as their storage classes"; [T2] mame-review C-2; [T5] 7 new files use it
 **Key symbols**: `ALLOW_SAVE_TYPE`, `ALLOW_SAVE_TYPE_AND_VECTOR`
@@ -93,7 +93,7 @@ void mydev_device::device_post_load()
 }
 ```
 
-Already saved without registration: `emu_timer`s (state is saved, so allocate them in start), memory banks (current entry), memory views (selected slot, refreshed after load), memory shares and `.ram()` map entries, `output_finder` values, the device clock, a CPU's own registers and the execute state, screen timing, palettes, and every child device. Not saved: memory regions, handlers installed at run time, and pointers. Declare the override `virtual void device_post_load() override ATTR_COLD;`; a derived class calls its base (C-3).
+Already saved without registration: `emu_timer`s (state is saved, so allocate them in start), memory banks (current entry), memory views (selected slot, refreshed after load), memory shares and `.ram()` map entries, `output_finder` values, the device clock, a CPU's own registers and the execute state, screen timing, palettes, and every child device. Not saved: memory regions, handlers installed at run time, and pointers. Declare the override `virtual void device_post_load() override ATTR_COLD;`; a derived class calls its base (C-3). Gfx declared with `GFXDECODE_RAM`/`GFXDECODE_DEVICE_RAM` is marked dirty after a load automatically (`9c3566728e4`, 2025-01-03, hap) — no post-load `mark_all_dirty()`; gfx created at run time still needs one.
 
 **Legacy forms**: `machine().save().register_postload(save_prepost_delegate(FUNC(cls::fn), this));` in `device_start`/`machine_start`. AJR (`1f7ff8fd9a3`, `da117d528ba`) and Vas Crabb (`97b67170277`, 77 overrides added) converted these; it still appears in new code (`src/mame/apple/civic.cpp`, `src/mame/bfm/bfm_cobra3.cpp`). `register_postload` is still right for non-device objects (`memory_view`, managers).
 **Since**: `device_post_load` established (in `device.h` by `cd1c840ba49`, 2011); register_postload conversions from 2018
@@ -130,7 +130,7 @@ public:
 	// constructor and the rest follow
 ```
 
-A system without `MACHINE_SUPPORTS_SAVE` is itself `SAVE_UNSUPPORTED` (`game_driver::emulation_flags`). `-validate` reports a system that claims `MACHINE_SUPPORTS_SAVE` while containing a `SAVE_UNSUPPORTED` device; slot cards and their children are exempt. At run time any such device, cards included, disables autosave and adds "not officially supported" to the save/load message. A device with `device_execute_interface` that registers nothing is a fatal error unless flagged. Placement at the very top of the class: mame-review D-3.
+A system without `MACHINE_SUPPORTS_SAVE` is itself `SAVE_UNSUPPORTED` (`game_driver::emulation_flags`). `-validate` reports a system that claims `MACHINE_SUPPORTS_SAVE` while containing a `SAVE_UNSUPPORTED` device; slot cards and their children are exempt. At run time any such device, cards included, disables autosave and adds "not officially supported" to the save/load message. A device with `device_execute_interface` that registers nothing is a fatal error unless flagged. Placement at the very top of the class: mame-review D-3. The same hook takes `flags::NOT_WORKING` (OR it with `SAVE_UNSUPPORTED` when both apply) for a device that isn't usable; a system's `MACHINE_NOT_WORKING` maps to the same bit (`f0e38cbe5be`).
 
 **Legacy forms**: leaving the device unflagged and relying only on the system omitting `MACHINE_SUPPORTS_SAVE`; commented-out `save_item`s (C-2).
 **Since**: `f0e38cbe5be` (2025-05-01, Vas Crabb; first user `mc6852.h`)

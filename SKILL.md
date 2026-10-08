@@ -18,13 +18,18 @@ Each topic file opens with a TL;DR; read past it only for the rule you are apply
 
 ## Topics
 
+- [device-structure](topics/device-structure.md) — device class skeleton and constructors, device types, slots and card lists, driver state classes and `final` lifecycle overrides, `-validate`
 - [logging](topics/logging.md) — `logmacro.h` channels, handler messages, logging from interface mixins
 - [timers](topics/timers.md) — `emu_timer` allocation/arming/reset, durations and counter readback, `synchronize`, scanline `timer_device`
 - [sound-streams](topics/sound-streams.md) — `device_sound_interface`, the 2025 `sound_stream_update` API, stream updates, sample rates, speakers and routing
-- [address-maps](topics/address-maps.md) — map entries and handler forms, `memory_view`, banks, shares and run-time installs, device maps and `memory_access`, `offs_t` width
+- [address-maps](topics/address-maps.md) — map entries and handler forms, `memory_view`, banks, shares and run-time installs, `offs_t` width
+- [memory-spaces](topics/memory-spaces.md) — device maps and space configs, `memory_access`, `device_rom_interface`, MMU logical spaces, wait states and contention, taps
+- [screens](topics/screens.md) — `SCREEN`/`.set_lcd()`/`VECTOR`/`SCREEN_SVG` after the 2026 split, `set_raw` and update callbacks, vblank IRQs, beam-position events and partial updates, run-time timing and device defaults
 - [interrupts-devcb](topics/interrupts-devcb.md) — declaring and binding devcb, CPU input lines without `HOLD_LINE`, acknowledge-callback vectors, input mergers and latches
 - [object-finders](topics/object-finders.md) — finder members and arrays, finders in machine config and maps, outward-pointing finders and `lookup()`, self-resolving output finders, `device_resolve_objects()`
 - [save-states](topics/save-states.md) — `save_item`/`STRUCT_MEMBER`/`save_pointer`, enums, what saves itself, `device_post_load`, mixins, `SAVE_UNSUPPORTED`
+- [input-ports](topics/input-ports.md) — `FUNC()` port callbacks without side effects, current input types and removed flags, DIP switches and `DEF_STR` coinage, musical and natural keyboards, reading ports from code
+- [cpp-library](topics/cpp-library.md) — `<bit>`, `<numbers>`, `std::endian` and float helpers, `requires` and constants under C++20, headers `emu.h` no longer provides, text and media file I/O
 
 ## Before a PR
 

@@ -51,7 +51,7 @@ Callbacks resolve themselves (they are object finders now): no `resolve()` in `d
 Optional pins: the device tests `if (!m_in_pa_cb.isunset())` and otherwise does what the chip does with the pin unwired; leave such a callback unbound (D-7). `.set_nop()` (write side only) makes `isunset()` false and replaces an earlier binding, such as one inherited from a base configuration; `.remove()` clears one.
 
 **Legacy forms**: `m_irq_cb.resolve_safe()` / `.resolve()` / `resolve_all_safe()` in `device_start`; `isnull()`; `devcb_read8 m_cb;` built with only `(*this)`; `m_irq1_cb`, `m_irq2_cb` numbered members (D-7); `DECLARE_WRITE_LINE_MEMBER(foo_w)` / `WRITE_LINE_MEMBER` (removed `9f661e567c4`, 2023-05-31); devcb2 `template <class Object> devcb_base &set_irq_callback(Object &&cb)` and `MCFG_*_CB(WRITELINE(...))`; `m_irq_cb(ASSERT_LINE)` (still in 11 files added in the last year — deviation from D-7).
-**Since**: `c3fb11c2c98` (2018-07-07, devcb3, `bind()`); `601034c8d71` (2020-02-05, `::array<N>`); `e9c1f4a42a6` (2023-06-17, no `resolve()`, read defaults required, `isnull()` → `isunset()`)
+**Since**: `c3fb11c2c98` (2018-07-07, devcb3, `bind()`); `601034c8d71` (2020-02-05, `::array<N>`); `e9c1f4a42a6` (2023-06-17, no `resolve()`, read defaults required, `isnull()` → `isunset()`); binder `.remove()` `a389a3393e9` (2025-04-14)
 **Evidence**: [T1] `src/emu/devcb.h` — `devcb_read::findit`/`devcb_write::findit` install the default when nothing is bound; `isunset()`; `binder::set_nop()` installs a `nop_creator`; [T3] `e9c1f4a42a6` (Vas Crabb); [T2] mame-review D-7, D-10; [T5] remaining `.resolve()`/`.resolve_safe()` calls in new files are all on `device_delegate`s, not devcb
 **Key symbols**: `devcb_write_line`, `devcb_read_line`, `devcb_read8`, `devcb_write8`, `devcb_write16`, `bind`, `findit`, `isunset`, `set_nop`, `remove`
 
@@ -86,7 +86,7 @@ Optional pins: the device tests `if (!m_in_pa_cb.isunset())` and otherwise does 
 ```
 
 `HOLD_LINE` asserts the line and has the core clear it in `standard_irq_callback`; that only works for cores that call it, and it hides the real acknowledge (a status read, an IORQ-cleared flip-flop, an EOI). C-9 flags it. `pulse_input_line` with zero width throws `emu_fatalerror` on a level-triggered line.
-**Legacy forms**: `set_input_line(0, HOLD_LINE)` (956 occurrences on master; 6 new files, mostly code split from older drivers); `set_vblank_int("screen", FUNC(x::irq0_line_hold))`, `set_periodic_int(...)`, `INTERRUPT_GEN_MEMBER`, `nmi_line_pulse` (`src/emu/driver.h`; 14 new files) — replace with `screen_vblank().set_inputline(...)` or a timer, plus a real clear.
+**Legacy forms**: `set_input_line(0, HOLD_LINE)` (956 occurrences on master; 6 new files, mostly code split from older drivers); `set_vblank_int("screen", FUNC(x::irq0_line_hold))`, `set_periodic_int(...)`, `INTERRUPT_GEN_MEMBER`, `nmi_line_pulse` (`src/emu/driver.h`; 14 new files) — replace with `screen_vblank().set_inputline(...)` or a timer, plus a real clear. Reading a line back: `input_line_state(line)` (was `input_state`, renamed in `28ec18ab96b`, 2025-04-08).
 **Since**: established
 **Evidence**: [T1] `src/emu/diexec.h` — `line_state`: `HOLD_LINE // hold interrupt line until acknowledged`; [T1] `src/emu/diexec.cpp` `default_irq_callback`, `pulse_input_line`; [T2] mame-review C-9; [T2] `object_finders.rst` — `set_input_line(INPUT_LINE_RESET, ... ? CLEAR_LINE : ASSERT_LINE)`
 **Key symbols**: `set_input_line`, `ASSERT_LINE`, `CLEAR_LINE`, `HOLD_LINE`, `pulse_input_line`, `INPUT_LINE_NMI`, `INPUT_LINE_RESET`, `INPUT_LINE_IRQ0`
